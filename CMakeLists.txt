@@ -67,15 +67,13 @@ endif()
 # Some libs are installed to ${TRITON_THIRD_PARTY_INSTALL_PREFIX}/{LIB}/lib64 instead
 # of ${TRITON_THIRD_PARTY_INSTALL_PREFIX}/{LIB}/lib on Centos
 set (LIB_DIR "lib")
-# /etc/os-release does not exist on Windows
-if(EXISTS "/etc/os-release")
-  file(STRINGS /etc/os-release DISTRO REGEX "^NAME=")
-  string(REGEX REPLACE "NAME=\"(.*)\"" "\\1" DISTRO "${DISTRO}")
-  message(STATUS "Distro Name: ${DISTRO}")
-  if(DISTRO MATCHES "CentOS.*")
+if(LINUX)
+  file(STRINGS "/etc/os-release" DISTRO_ID_LIKE REGEX "ID_LIKE")
+  if(${DISTRO_ID_LIKE} MATCHES "rhel|centos")
     set (LIB_DIR "lib64")
-  endif()
-endif()
+  endif(${DISTRO_ID_LIKE} MATCHES "rhel|centos")
+endif(LINUX)
+set(TRITON_CORE_HEADERS_ONLY OFF)
 
 # C++ standard
 set(TRITON_MIN_CXX_STANDARD 17 CACHE STRING "The minimum C++ standard whose features are requested to build this target.")
@@ -111,7 +109,7 @@ ExternalProject_Add(curl
 ExternalProject_Add(grpc-repo
   PREFIX grpc-repo
   GIT_REPOSITORY "https://github.com/grpc/grpc.git"
-  GIT_TAG "v1.48.0"
+  GIT_TAG "v1.54.3"
   SOURCE_DIR "${CMAKE_CURRENT_BINARY_DIR}/grpc-repo/src/grpc"
   EXCLUDE_FROM_ALL ON
   CONFIGURE_COMMAND ""
@@ -120,7 +118,7 @@ ExternalProject_Add(grpc-repo
   TEST_COMMAND ""
   CMAKE_CACHE_ARGS
     -DCMAKE_CXX_STANDARD:STRING=${TRITON_MIN_CXX_STANDARD}
-  PATCH_COMMAND python3 ${CMAKE_CURRENT_SOURCE_DIR}/tools/install_src.py --src <SOURCE_DIR> ${INSTALL_SRC_DEST_ARG} --dest-basename=grpc_1.48.0
+  PATCH_COMMAND python3 ${CMAKE_CURRENT_SOURCE_DIR}/tools/install_src.py --src <SOURCE_DIR> ${INSTALL_SRC_DEST_ARG} --dest-basename=grpc_1.54.3
 )
 #
 # Build nlohmann/json
@@ -132,6 +130,7 @@ ExternalProject_Add(nlohmann-json
   SOURCE_DIR "${CMAKE_CURRENT_BINARY_DIR}/json"
   EXCLUDE_FROM_ALL ON
   CMAKE_CACHE_ARGS
+    -DJSON_MultipleHeaders:BOOL=ON
     -DCMAKE_CXX_STANDARD:STRING=${TRITON_MIN_CXX_STANDARD}
     -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=TRUE
     -DCMAKE_INSTALL_PREFIX:PATH=${TRITON_THIRD_PARTY_INSTALL_PREFIX}/nlohmann_json
@@ -181,7 +180,6 @@ ExternalProject_Add(protobuf
     -DCMAKE_BUILD_TYPE:STRING=RELEASE
     -DBUILD_SHARED_LIBS:STRING=no
     -DCMAKE_INSTALL_PREFIX:PATH=${TRITON_THIRD_PARTY_INSTALL_PREFIX}/protobuf
-  PATCH_COMMAND git cherry-pick -n f180289c4670ca1afde5865bb8a7f2b61a3efcc5
   DEPENDS grpc-repo absl
 )
 
